@@ -1,0 +1,43 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: GP Fitting",
+            "type": "python",
+            "request": "launch",
+            "program": "/home/krmaria/catkin_ws/src/data_driven_mpc/ros_gp_mpc/src/model_fitting/gp_fitting.py",
+            "console": "integratedTerminal",
+            "python": "/home/krmaria/.conda/envs/myenv/bin/python",
+            "args": ["--n_points", "50", "--model_name", "simple_sim_gp", "--x", "7", "--y", "7"],
+            "env": {
+                "ACADOS_SOURCE_DIR": "/home/krmaria/catkin_ws/src/data_driven_mpc/externals/acados-src",
+                "PYTHONPATH": "/opt/ros/melodic/lib/python2.7/dist-packages::/home/krmaria/catkin_ws/src/data_driven_mpc/ros_gp_mpc"
+            }
+        },
+        {
+            "name": "Python: Trajectory test",
+            "type": "python",
+            "request": "launch",
+            "program": "/home/krmaria/catkin_ws/src/data_driven_mpc/ros_gp_mpc/src/experiments/trajectory_test.py",
+            "console": "integratedTerminal",
+            "python": "/home/krmaria/.conda/envs/myenv/bin/python",
+            "args": ["--model_version", "d55abbd", "--model_name", "simple_sim_gp"],
+            "env": {
+                "ACADOS_SOURCE_DIR": "/home/krmaria/catkin_ws/src/data_driven_mpc/externals/acados-src",
+                "PYTHONPATH": "/opt/ros/melodic/lib/python2.7/dist-packages::/home/krmaria/catkin_ws/src/data_driven_mpc/ros_gp_mpc"
+            }
+        },
+        {
+            "name": "Python: Plot GP",
+            "type": "python",
+            "request": "launch",
+            "program": "/home/krmaria/catkin_ws/src/data_driven_mpc/ros_gp_mpc/src/model_fitting/plot_gp.py",
+            "console": "integratedTerminal",
+            "python": "/home/krmaria/.conda/envs/myenv/bin/python",
+            "env": {
+                "PYTHONPATH": "/opt/ros/melodic/lib/python2.7/dist-packages::/home/krmaria/catkin_ws/src/data_driven_mpc/ros_gp_mpc"
+            }
+        }
+    ]
+}
+

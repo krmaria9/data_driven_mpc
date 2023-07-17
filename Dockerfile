@@ -10,8 +10,8 @@ RUN useradd -m $USERNAME && \
     mkdir -p /etc/sudoers.d && \
     echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/$USERNAME && \
     chmod 0440 /etc/sudoers.d/$USERNAME && \
-    usermod  --uid 1000 $USERNAME && \
-    groupmod --gid 1000 $USERNAME
+    usermod  --uid 1030 $USERNAME && \
+    groupmod --gid 1032 $USERNAME
 
 USER ${USERNAME}
 WORKDIR ${HOME}
@@ -33,9 +33,13 @@ ENV CONDA_DIR ${HOME}/.conda
 RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh
 RUN sudo /bin/bash ~/miniconda.sh -b -p $CONDA_DIR
 RUN sudo chown -R ${USERNAME}:${USERNAME} $CONDA_DIR
+ENV PATH=$CONDA_DIR/bin:$PATH
+RUN sudo chown -R ${USERNAME}:${USERNAME} $CONDA_DIR
+RUN conda init
 
-# create a new environment with Python 3.6
-RUN $CONDA_DIR/bin/conda create -n myenv python=3.6
+# create a new environment with Python 3.7
+RUN $CONDA_DIR/bin/conda create -n myenv python=3.7
+
 # initialize shell for conda
 RUN echo ". ${CONDA_DIR}/etc/profile.d/conda.sh" >> ~/.bashrc
 
@@ -57,7 +61,7 @@ RUN sudo apt-get install -y \
 RUN /bin/bash -c ". ${CONDA_DIR}/etc/profile.d/conda.sh && conda activate myenv"
 
 # Then use pip
-RUN pip3 install catkin-tools scipy rospkg catkin_pkg
+RUN pip install catkin-tools scipy rospkg catkin_pkg tikzplotlib pyyaml
 
 # Create a catkin workspace
 RUN /bin/bash -c "source /opt/ros/${ROS_DISTRO}/setup.bash"

@@ -1,5 +1,6 @@
 #!/bin/sh
 DATA_DRIVEN_DIR=${1:-"$HOME/git/data_driven_mpc"}
+ACADOS_DIR=${2:-"$HOME/git/acados"}
 USERNAME=krmaria
 XSOCK=/tmp/.X11-unix
 XAUTH=/tmp/.docker.xauth
@@ -33,8 +34,9 @@ fi
 # fi
 
 docker run --privileged --rm -it \
-	       --detach \
+	         --detach \
            --volume $DATA_DRIVEN_DIR:/home/$USERNAME/catkin_ws/src/data_driven_mpc/:rw \
+           --volume $ACADOS_DIR:/home/$USERNAME/catkin_ws/src/data_driven_mpc/externals/acados-src/:rw \
            --volume=$XSOCK:$XSOCK:rw \
            --volume=$XAUTH:$XAUTH:rw \
            --volume=/dev:/dev:rw \
