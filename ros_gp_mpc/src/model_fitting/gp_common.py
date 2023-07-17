@@ -63,7 +63,7 @@ class GPDataset:
 
         if raw_ds is not None:
             self.load_data(raw_ds)
-            self.prune()
+            # self.prune()
 
     def load_data(self, ds):
         x_raw = undo_jsonify(ds['state_in'].to_numpy())
@@ -340,3 +340,17 @@ def world_to_body_velocity_mapping(state_sequence):
         v_b.append(v_dot_q(v_w[i], quaternion_inverse(q[i])))
     v_b = np.stack(v_b)
     return np.concatenate((p, q, v_b, w), 1)
+
+
+def body_to_world_velocity_mapping(state_sequence):
+    """
+    :param state_sequence: N x 13 state array, where N is the number of states in the sequence.
+    :return: An N x 13 sequence of states, but where the velocities (assumed to be in positions 7, 8, 9) have been
+    rotated from body to world frame. The rotation is made using the quaternion in positions 3, 4, 5, 6.
+    """
+    p, q, v_b, w = separate_variables(state_sequence)
+    v_w = []
+    for i in range(len(q)):
+        v_w.append(v_dot_q(v_b[i], q[i]))  # use the original quaternion without inversing it
+    v_w = np.stack(v_w)
+    return np.concatenate((p, q, v_w, w), 1)

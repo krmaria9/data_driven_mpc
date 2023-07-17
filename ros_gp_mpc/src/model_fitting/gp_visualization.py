@@ -18,11 +18,13 @@ from src.model_fitting.gp_common import GPDataset, restore_gp_regressors, read_d
 from config.configuration_parameters import ModelFitConfig as Conf
 from src.utils.utils import load_pickled_models
 from src.utils.visualization import visualize_gp_inference
+import os
 
 
 def gp_visualization_experiment(quad_sim_options, dataset_name,
                                 x_cap, hist_bins, hist_thresh,
                                 x_vis_feats, u_vis_feats, y_vis_feats,
+                                save_file_path, save_file_name,
                                 grid_sampling_viz=False,
                                 load_model_version="", load_model_name="", pre_set_gp=None):
 
@@ -117,8 +119,10 @@ def gp_visualization_experiment(quad_sim_options, dataset_name,
         if i == std_estimate.shape[1] - 1:
             plt.xlabel('time (s)')
 
-    plt.show()
-
+    plt.tight_layout()
+    plt.grid(True)
+    plt.savefig(os.path.join(save_file_path, save_file_name + '_' + str(y_vis_feats) + '_0.png'))
+    plt.close()
 
 if __name__ == '__main__':
 

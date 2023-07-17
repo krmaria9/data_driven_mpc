@@ -114,6 +114,27 @@ def gp_train_and_save(x, y, gp_regressors, save_model, save_file, save_path, y_d
     prog_range = tqdm(y_dims) if progress_bar else y_dims
 
     for y_dim_reg, dim in enumerate(prog_range):
+        
+        # Fit one regressor for each output dimension
+        plt.figure()
+        plt.scatter(range(1, len(x[y_dim_reg])+1),x[y_dim_reg],marker='x',label='x')
+        plt.scatter(range(1, len(x[y_dim_reg])+1),y[y_dim_reg],marker='o',label='y')
+        plt.grid(True)
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.savefig(os.path.join(save_path, save_file + '_xy_comparison.png'), dpi=600)
+        plt.close()
+        
+        plt.figure()
+        plt.scatter(x[y_dim_reg],y[y_dim_reg],marker='o')
+        plt.xlabel('x')
+        plt.ylabel('y')
+        plt.grid(True)
+        plt.grid(True)
+        plt.tight_layout()
+        plt.savefig(os.path.join(save_path, save_file + '_xy_correlation.png'), dpi=600)
+        plt.close()
 
         # Fit one regressor for each output dimension
         gp_regressors[y_dim_reg].fit(x[y_dim_reg], y[y_dim_reg])
@@ -299,7 +320,7 @@ def main(x_features, u_features, reg_y_dim, quad_sim_options, dataset_name,
         exponential_kernel = npKernelFunctions('squared_exponential', params={'l': l_scale, 'sigma_f': sigma_f})
         gp_regressors.append(npGPRegression(kernel=exponential_kernel, **gp_params))
         gp_regressors[cluster] = gp_train_and_save([x_train], [y_train], [gp_regressors[cluster]], True, save_file_name,
-                                                   save_file_path, [reg_y_dim], cluster, progress_bar=False)[0]
+                                                   save_file_path, [reg_y_dim], cluster, progress_bar=False)[0] # x_train (20,1), y_train (20,)
 
     if visualize_model:
         gp_ensemble = GPEnsemble()
@@ -308,6 +329,7 @@ def main(x_features, u_features, reg_y_dim, quad_sim_options, dataset_name,
         gp_visualization_experiment(quad_sim_options, gp_dataset,
                                     x_cap, hist_bins, hist_thresh,
                                     x_features, u_features, reg_y_dim,
+                                    save_file_path, save_file_name,
                                     grid_sampling_viz=True, pre_set_gp=gp_ensemble)
 
 
