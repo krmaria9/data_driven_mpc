@@ -15,9 +15,9 @@ from src.utils.utils import parse_xacro_file
 from src.quad_mpc.quad_3d import Quadrotor3D
 from src.quad_mpc.quad_3d_mpc import Quad3DMPC
 import numpy as np
-import std_msgs.msg
-from quadrotor_msgs.msg import ControlCommand
-import rospy
+# import std_msgs.msg
+# from quadrotor_msgs.msg import ControlCommand
+# import rospy
 import os
 
 

@@ -25,6 +25,17 @@ from src.utils.utils import skew_symmetric, v_dot_q, safe_mkdir_recursive, quate
 from src.utils.quad_3d_opt_utils import discretize_dynamics_and_cost
 
 
+def quat_mult(q1,q2):
+    ans = cs.vertcat(q2[0,:] * q1[0,:] - q2[1,:] * q1[1,:] - q2[2,:] * q1[2,:] - q2[3,:] * q1[3,:],
+                q2[0,:] * q1[1,:] + q2[1,:] * q1[0,:] - q2[2,:] * q1[3,:] + q2[3,:] * q1[2,:],
+                q2[0,:] * q1[2,:] + q2[2,:] * q1[0,:] + q2[1,:] * q1[3,:] - q2[3,:] * q1[1,:],
+                q2[0,:] * q1[3,:] - q2[1,:] * q1[2,:] + q2[2,:] * q1[1,:] + q2[3,:] * q1[0,:])
+    return ans
+
+def rotate_quat(q1,v1):
+    ans = quat_mult(quat_mult(q1, cs.vertcat(0, v1)), cs.vertcat(q1[0,:],-q1[1,:], -q1[2,:], -q1[3,:]))
+    return cs.vertcat(ans[1,:], ans[2,:], ans[3,:]) # to covert to 3x1 vec
+
 class Quad3DOptimizer:
     def __init__(self, quad, t_horizon=1, n_nodes=20,
                  q_cost=None, r_cost=None, q_mask=None,
@@ -368,29 +379,70 @@ class Quad3DOptimizer:
         """
 
         f_thrust = self.u * self.quad.max_thrust
-        g = cs.vertcat(0.0, 0.0, 9.81)
+        g = cs.vertcat(0.0, 0.0, 9.8066)
         a_thrust = cs.vertcat(0.0, 0.0, f_thrust[0] + f_thrust[1] + f_thrust[2] + f_thrust[3]) / self.quad.mass
 
         v_dynamics = v_dot_q(a_thrust, self.q) - g
 
-        if rdrv_d is not None:
-            # Velocity in body frame:
-            v_b = v_dot_q(self.v, quaternion_inverse(self.q))
-            rdrv_drag = v_dot_q(cs.mtimes(rdrv_d, v_b), self.q)
-            v_dynamics += rdrv_drag
+        # Velocity in body frame:
+        v_b = v_dot_q(self.v, quaternion_inverse(self.q))
+        cd = [0.26, 0.28, 0.42, 0.0, 0.0, 0.0, 0.01]
+        Fd_b = cs.vertcat(cd[0] * v_b[0] + cd[3] * v_b[0]**3,
+            cd[1] * v_b[1] + cd[4] * v_b[1]**3,
+            cd[2] * v_b[2] + cd[5] * v_b[2]**3 - cd[6] * (v_b[0]**2 + v_b[1]**2))
+        rdrv_drag = v_dot_q(Fd_b / self.quad.mass, self.q)
+        v_dynamics -= rdrv_drag # TODO (krmaria): negative?
 
         return v_dynamics
 
+        # g = cs.vertcat(0.0, 0.0, -9.8066)
+        # q_conj = cs.vertcat(self.q[0,:], -self.q[1,:], -self.q[2, :], -self.q[3, :])
+        # v_B = rotate_quat(q_conj, self.v)
+        # cd = [0.26, 0.28, 0.42, 0.0, 0.0, 0.0, 0.01]
+        # Fd_B = cs.vertcat(cd[0] * v_B[0] + cd[3] * v_B[0]**3,
+        #             cd[1] * v_B[1] + cd[4] * v_B[1]**3,
+        #             cd[2] * v_B[2] + cd[5] * v_B[2]**3 - cd[6] * (v_B[0]**2 + v_B[1]**2))
+        # Fd_W = rotate_quat(self.q, Fd_B)
+
+        # return rotate_quat(self.q, cs.vertcat(0, 0, (f_thrust[0]+f_thrust[1]+f_thrust[2]+f_thrust[3])/self.quad.mass)) + g - Fd_W/self.quad.mass
+
     def w_dynamics(self):
         f_thrust = self.u * self.quad.max_thrust
+        
+        # TODO (krmaria): figure this out
 
-        y_f = cs.MX(self.quad.y_f)
-        x_f = cs.MX(self.quad.x_f)
-        c_f = cs.MX(self.quad.z_l_tau)
-        return cs.vertcat(
-            (cs.mtimes(f_thrust.T, y_f) + (self.quad.J[1] - self.quad.J[2]) * self.r[1] * self.r[2]) / self.quad.J[0],
-            (-cs.mtimes(f_thrust.T, x_f) + (self.quad.J[2] - self.quad.J[0]) * self.r[2] * self.r[0]) / self.quad.J[1],
-            (cs.mtimes(f_thrust.T, c_f) + (self.quad.J[0] - self.quad.J[1]) * self.r[0] * self.r[1]) / self.quad.J[2])
+        # # TORRENTE
+        # x_f = cs.MX(self.quad.x_f) # [0.0777817, -0.0777817, -0.0777817, 0.0777817]
+        # y_f = cs.MX(self.quad.y_f) # [-0.0777817, -0.0777817, 0.0777817, 0.0777817]
+        # c_f = cs.MX(self.quad.z_l_tau) # [-0.022, 0.022, -0.022, 0.022]
+        # w_dot_torrente = cs.vertcat(
+        #     (cs.mtimes(f_thrust.T, y_f) + (self.quad.J[1] - self.quad.J[2]) * self.r[1] * self.r[2]) / self.quad.J[0],
+        #     (-cs.mtimes(f_thrust.T, x_f) + (self.quad.J[2] - self.quad.J[0]) * self.r[2] * self.r[0]) / self.quad.J[1],
+        #     (cs.mtimes(f_thrust.T, c_f) + (self.quad.J[0] - self.quad.J[1]) * self.r[0] * self.r[1]) / self.quad.J[2])
+        
+        # AGILICIOUS
+        inertia = cs.MX.eye(3)
+        inertia[0,0] = self.quad.J[0]
+        inertia[1,1] = self.quad.J[1]
+        inertia[2,2] = self.quad.J[2]
+
+        inertia_inv = cs.MX.eye(3)
+        inertia_inv[0,0] = 1/self.quad.J[0]
+        inertia_inv[1,1] = 1/self.quad.J[1]
+        inertia_inv[2,2] = 1/self.quad.J[2]
+        kappa = 0.022
+        # l_x = cs.vertcat(0.075, -0.075, -0.75, 0.075)
+        # l_y = cs.vertcat(-0.1, 0.1, -0.1, 0.1)
+        l_x = cs.vertcat(0.0777817, -0.0777817, -0.0777817, 0.0777817)
+        l_y = cs.vertcat(-0.0777817, -0.0777817, 0.0777817, 0.0777817) # FIX: change sign in elems 1,2
+        t_BM = cs.horzcat(-l_x, l_y)
+        tau_yx = cs.mtimes(t_BM.T, f_thrust)
+        w_dot_agilicious = cs.mtimes(inertia_inv, cs.vertcat(
+            tau_yx[1],
+            tau_yx[0],
+            kappa*(-f_thrust[0]+f_thrust[1]-f_thrust[2]+f_thrust[3]))-cs.cross(self.r, cs.mtimes(inertia,self.r))) # FIX: change sign in elems 1,2
+        
+        return w_dot_agilicious
 
     def linearized_quad_dynamics(self):
         """

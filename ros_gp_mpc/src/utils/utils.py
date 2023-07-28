@@ -754,16 +754,16 @@ def parse_xacro_file(xacro):
 
     attrib_dict = {}
 
-    for node in tree.getroot().getchildren():
+    for node in tree.getroot():
         # Get attributes
         attributes = node.attrib
 
         if 'value' in attributes.keys():
             attrib_dict[attributes['name']] = attributes['value']
 
-        if node.getchildren():
+        if list(node):
             try:
-                attrib_dict[attributes['name']] = [child.attrib for child in node.getchildren()]
+                attrib_dict[attributes['name']] = [child.attrib for child in list(node)]
             except:
                 continue
 
