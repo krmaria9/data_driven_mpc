@@ -114,28 +114,6 @@ def gp_train_and_save(x, y, gp_regressors, save_model, save_file, save_path, y_d
     prog_range = tqdm(y_dims) if progress_bar else y_dims
 
     for y_dim_reg, dim in enumerate(prog_range):
-        
-        # Fit one regressor for each output dimension
-        plt.figure()
-        plt.scatter(range(1, len(x[y_dim_reg])+1),x[y_dim_reg],marker='x',label='x')
-        plt.scatter(range(1, len(x[y_dim_reg])+1),y[y_dim_reg],marker='o',label='y')
-        plt.grid(True)
-        plt.legend()
-        plt.grid(True)
-        plt.tight_layout()
-        plt.savefig(os.path.join(save_path, save_file + '_xy_comparison.png'), dpi=600)
-        plt.close()
-        
-        plt.figure()
-        plt.scatter(x[y_dim_reg],y[y_dim_reg],marker='o')
-        plt.xlabel('x')
-        plt.ylabel('y')
-        plt.grid(True)
-        plt.grid(True)
-        plt.tight_layout()
-        plt.savefig(os.path.join(save_path, save_file + '_xy_correlation.png'), dpi=600)
-        plt.close()
-
         # Fit one regressor for each output dimension
         gp_regressors[y_dim_reg].fit(x[y_dim_reg], y[y_dim_reg])
         if save_model:

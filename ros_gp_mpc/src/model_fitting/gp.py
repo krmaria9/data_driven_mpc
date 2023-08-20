@@ -91,7 +91,7 @@ class CustomKernelFunctions:
             Covariance matrix (m x n).
         """
 
-        if isinstance(x_2, cs.MX):
+        if isinstance(x_2, cs.SX):
             return self._squared_exponential_kernel_cs(x_1, x_2)
 
         # Length scale parameter
@@ -128,12 +128,12 @@ class CustomKernelFunctions:
         sigma_f = self.params['sigma_f'] if 'sigma_f' in self.params.keys() else 1.0
 
         if x_1.shape != x_2.shape and x_2.shape[0] == 1:
-            tiling_ones = cs.MX.ones(x_1.shape[0], 1)
+            tiling_ones = cs.SX.ones(x_1.shape[0], 1)
             d = x_1 - cs.mtimes(tiling_ones, x_2)
-            dist = cs.sum2(d ** 2 / cs.mtimes(tiling_ones, cs.MX(len_scale ** 2).T))
+            dist = cs.sum2(d ** 2 / cs.mtimes(tiling_ones, cs.SX(len_scale ** 2).T))
         else:
             d = x_1 - x_2
-            dist = cs.sum1(d ** 2 / cs.MX(len_scale ** 2))
+            dist = cs.sum1(d ** 2 / cs.SX(len_scale ** 2))
 
         return sigma_f * cs.SX.exp(-.5 * dist)
 
@@ -153,16 +153,16 @@ class CustomKernelFunctions:
         if self.kernel_type != 'squared_exponential':
             raise NotImplementedError
 
-        len_scale = self.params['l'] if len(self.params['l']) > 0 else self.params['l'] * cs.MX.ones(z_train.shape[1])
+        len_scale = self.params['l'] if len(self.params['l']) > 0 else self.params['l'] * cs.SX.ones(z_train.shape[1])
         len_scale = np.atleast_2d(len_scale ** 2)
 
         # Broadcast z vector to have the shape of z_train (tile z to to the number of training points n)
-        z_tile = cs.mtimes(cs.MX.ones(z_train.shape[0], 1), z.T)
+        z_tile = cs.mtimes(cs.SX.ones(z_train.shape[0], 1), z.T)
 
         # Compute k_zZ. Broadcast it to shape of z_tile and z_train, i.e. by the number of variables in z.
-        k_zZ = cs.mtimes(cs.MX.ones(z_train.shape[1], 1), self.__call__(z_train, z.T).T)
+        k_zZ = cs.mtimes(cs.SX.ones(z_train.shape[1], 1), self.__call__(z_train, z.T).T)
 
-        return - k_zZ * (z_tile - z_train).T / cs.mtimes(cs.MX.ones(z_train.shape[0], 1), len_scale).T
+        return - k_zZ * (z_tile - z_train).T / cs.mtimes(cs.SX.ones(z_train.shape[0], 1), len_scale).T
 
 
 class CustomGPRegression:
@@ -393,7 +393,7 @@ class CustomGPRegression:
             raise NotImplementedError
 
         # Symbolic variable for input state
-        z = cs.MX.sym('z', self.x_train.shape[1])
+        z = cs.SX.sym('z', self.x_train.shape[1])
 
         # Compute the kernel derivative:
         dgpdz = cs.mtimes(self.kernel.diff(z, self._x_train_cs), self._K_inv_y_cs)
@@ -417,7 +417,7 @@ class CustomGPRegression:
         # Ensure at least n=1
         x_test = np.atleast_2d(x_test) if isinstance(x_test, np.ndarray) else x_test
 
-        if isinstance(x_test, cs.MX):
+        if isinstance(x_test, cs.SX):
             return self._predict_sym(x_test=x_test, return_std=return_std, return_cov=return_cov)
 
         if isinstance(x_test, cs.DM):
@@ -446,7 +446,7 @@ class CustomGPRegression:
     def _predict_sym(self, x_test, return_std=False, return_cov=False):
         """
         Computes the GP posterior mean and covariance at a given a test sample using CasADi symbolics.
-        :param x_test: vector of size mx1, where m is the number of features used for the GP prediction
+        :param x_test: vector of size SX1, where m is the number of features used for the GP prediction
 
         :return: the posterior mean (scalar) and covariance (scalar).
         """
@@ -459,7 +459,7 @@ class CustomGPRegression:
         if not return_std and not return_cov:
             return {'mu': mu_s}
 
-        k_ss = self.kernel(x_test, x_test) + 1e-8 * cs.MX.eye(x_test.shape[1])
+        k_ss = self.kernel(x_test, x_test) + 1e-8 * cs.SX.eye(x_test.shape[1])
 
         # Posterior covariance
         cov_s = k_ss - cs.mtimes(cs.mtimes(k_s.T, self._K_inv_cs), k_s)
@@ -609,10 +609,10 @@ class GPEnsemble:
     def get_z(self, x, u, dim):
         """
         Computes the z features from the x and u vectors, and the target output dimension.
-        :param x: state vector. Shape 13x1. Can be np.array or cs.MX.
-        :param u: control input vector. Shape 4x1. Can be np.array or cs.MX.
+        :param x: state vector. Shape 13x1. Can be np.array or cs.SX.
+        :param u: control input vector. Shape 4x1. Can be np.array or cs.SX.
         :param dim: output dimension target.
-        :return: A vector of shape mx1 of the same format as inputs. m is determined by the B_z matrix for dim.
+        :return: A vector of shape SX1 of the same format as inputs. m is determined by the B_z matrix for dim.
         """
 
         # Get input feature indices
@@ -622,7 +622,7 @@ class GPEnsemble:
         # Stack into a single matrix
         if isinstance(x, np.ndarray):
             z = np.concatenate((x[x_feats], u[u_feats]), axis=0)
-        elif isinstance(x, cs.MX):
+        elif isinstance(x, cs.SX):
             z = cs.mtimes(self.B_z_dict[dim], cs.vertcat(x, u))
         else:
             raise TypeError
@@ -717,7 +717,7 @@ class GPEnsemble:
 
         # Convert to CasADi symbolic or numpy matrix depending on the input type
         pred = cs.horzcat(*[cs.vertcat(*pred[i]) for i in range(x_test.shape[1])]) \
-            if isinstance(x_test, cs.MX) else np.squeeze(np.array(pred)).T
+            if isinstance(x_test, cs.SX) else np.squeeze(np.array(pred)).T
 
         outputs["pred"] = pred
 
@@ -726,9 +726,9 @@ class GPEnsemble:
 
         # Convert to CasADi symbolic or numpy matrix depending on the input type
         cov_or_std = cs.horzcat(*[cs.vertcat(*cov_or_std[i]) for i in range(x_test.shape[1])]) \
-            if isinstance(x_test, cs.MX) else np.squeeze(np.array(cov_or_std)).T
+            if isinstance(x_test, cs.SX) else np.squeeze(np.array(cov_or_std)).T
         noise_prior = cs.horzcat(*[cs.vertcat(*noise_prior[i]) for i in range(x_test.shape[1])]) \
-            if isinstance(x_test, cs.MX) else np.squeeze(np.array(noise_prior)).T
+            if isinstance(x_test, cs.SX) else np.squeeze(np.array(noise_prior)).T
 
         outputs["cov_or_std"] = cov_or_std
         outputs["noise_cov"] = noise_prior

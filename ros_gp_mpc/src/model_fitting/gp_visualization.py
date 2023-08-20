@@ -71,7 +71,7 @@ def gp_visualization_experiment(quad_sim_options, dataset_name,
 
     # #### VISUALIZE GRID SAMPLING RESULTS IN TRAINING SET RANGE #### #
     if grid_sampling_viz:
-        visualize_gp_inference(x_test, u_test, y_test, gp_ensemble, x_vis_feats, y_dims, labels)
+        visualize_gp_inference(x_test, u_test, y_test, gp_ensemble, x_vis_feats, y_dims, labels, save_file_path)
 
     # #### EVALUATE GP ON TEST SET #### #
     print("Test set prediction...")
@@ -102,6 +102,7 @@ def gp_visualization_experiment(quad_sim_options, dataset_name,
     for i in range(std_estimate.shape[1]):
         plt.subplot(std_estimate.shape[1], 1, i+1)
         plt.plot(t_vec, np.zeros(augmented_diff[:, i].shape), 'k')
+        plt.plot(t_vec, mean_estimate-x_pred, 'g', label='y_pred')
         plt.plot(t_vec, augmented_diff[:, i], 'b', label='augmented_err')
         plt.plot(t_vec, augmented_diff[:, i] - 3 * std_estimate[:, i], ':c')
         plt.plot(t_vec, augmented_diff[:, i] + 3 * std_estimate[:, i], ':c', label='3 std')

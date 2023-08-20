@@ -155,7 +155,7 @@ def visualize_data_distribution(x_data, y_data, clusters, x_pruned, y_pruned):
     plt.show()
 
 
-def visualize_gp_inference(x_data, u_data, y_data, gp_ensemble, vis_features_x, y_dims, labels):
+def visualize_gp_inference(x_data, u_data, y_data, gp_ensemble, vis_features_x, y_dims, labels, save_file_path):
     # WARNING: This function is extremely limited to the case where the regression is performed using just the
     # velocity state as input features and as output dimensions.
 
@@ -194,13 +194,17 @@ def visualize_gp_inference(x_data, u_data, y_data, gp_ensemble, vis_features_x, 
         ax[0].set_xlabel(labels[0])
         ax[0].set_ylabel('RMSE')
         ax[0].set_title('Post-processed dataset')
+        ax[0].grid(True)
 
         ax[1].scatter(x_data[:, vis_features_x], y_pred, label='GP')
         ax[1].plot(bin_midpoints, win_average, label='window average')
         ax[1].set_xlabel(labels[0])
         ax[1].set_title('Predictions')
         ax[1].legend()
-
+        ax[1].grid(True)
+        plt.tight_layout()
+        plt.savefig(os.path.join(save_file_path, 'gp_prediction_' + str(vis_features_x[0]) + '.png'))
+        plt.close()
         return
 
     elif len(vis_features_x) >= 3:
@@ -248,7 +252,11 @@ def visualize_gp_inference(x_data, u_data, y_data, gp_ensemble, vis_features_x, 
     u_mock = np.tile(np.zeros_like(z), (1, u_data.shape[1]))
 
     if len(vis_features_x) != 3:
-        plt.show()
+        plt.tight_layout()
+        plt.grid(True)
+        plt.savefig(os.path.join(save_file_path, save_file_name + '_' + str(y_vis_feats) + '_0.png'))
+        plt.close()
+        # plt.show()
         return
 
     # Generate animated plot showing prediction of the multiple clusters.

@@ -21,6 +21,7 @@ fi
 
 echo "Dimension indices: $dimension_indices"
 
+# TODO (kmaria): shouldn't x be [7,8,9] while y is 7,8 or 9?
 for i in $dimension_indices
 do
     echo "Running with index $i..."
