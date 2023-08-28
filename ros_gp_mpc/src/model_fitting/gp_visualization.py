@@ -89,10 +89,13 @@ def gp_visualization_experiment(quad_sim_options, dataset_name,
 
     # GP regresses model error, correct the predictions of the nominal model
     augmented_diff = nominal_diff - mean_estimate
-    mean_estimate += x_pred
 
-    nominal_rmse = np.mean(np.abs(nominal_diff), 0)
-    augmented_rmse = np.mean(np.abs(augmented_diff), 0)
+    nominal_rmse = np.sqrt(np.mean(nominal_diff**2))
+    augmented_rmse = np.sqrt(np.mean(augmented_diff**2))
+
+    # TODO (krmaria): Torrente was using this
+    # nominal_mae = np.mean(np.abs(nominal_diff), 0)
+    # augmented_mae = np.mean(np.abs(augmented_diff), 0)
 
     labels = [r'$v_x$ error', r'$v_y$ error', r'$v_z$ error']
     t_vec = np.cumsum(dt_test)
@@ -102,18 +105,18 @@ def gp_visualization_experiment(quad_sim_options, dataset_name,
     for i in range(std_estimate.shape[1]):
         plt.subplot(std_estimate.shape[1], 1, i+1)
         plt.plot(t_vec, np.zeros(augmented_diff[:, i].shape), 'k')
-        plt.plot(t_vec, mean_estimate-x_pred, 'g', label='y_pred')
         plt.plot(t_vec, augmented_diff[:, i], 'b', label='augmented_err')
-        plt.plot(t_vec, augmented_diff[:, i] - 3 * std_estimate[:, i], ':c')
-        plt.plot(t_vec, augmented_diff[:, i] + 3 * std_estimate[:, i], ':c', label='3 std')
+        # plt.plot(t_vec, augmented_diff[:, i] - 3 * std_estimate[:, i], ':c')
+        # plt.plot(t_vec, augmented_diff[:, i] + 3 * std_estimate[:, i], ':c', label='3 std')
         if nominal_diff is not None:
             plt.plot(t_vec, nominal_diff[:, i], 'r', label='nominal_err')
-            plt.title('Mean dt: %.2f s. Nominal RMSE: %.5f [m/s].  Augmented rmse: %.5f [m/s]' % (
+            plt.title('Dt: %.2f s. Nom RMSE: %.7f [m/s].  Aug RMSE: %.7f [m/s]' % (
                 float(np.mean(dt_test)), nominal_rmse[i], augmented_rmse[i]))
         else:
-            plt.title('Mean dt: %.2f s. Augmented RMSE: %.5f [m/s]' % (
+            plt.title('Dt: %.2f s. Aug RMSE: %.7f [m/s]' % (
                 float(np.mean(dt_test)), float(augmented_rmse[i])))
 
+        plt.plot(t_vec, mean_estimate, 'g', label='y_pred')
         plt.ylabel(labels[i])
         plt.legend()
 
@@ -122,7 +125,8 @@ def gp_visualization_experiment(quad_sim_options, dataset_name,
 
     plt.tight_layout()
     plt.grid(True)
-    plt.savefig(os.path.join(save_file_path, save_file_name + '_' + str(y_vis_feats) + '_0.png'))
+    filename = save_file_name + '_' + str(y_vis_feats) + '.png'
+    plt.savefig(os.path.join(save_file_path, filename), dpi=400)
     plt.close()
 
 if __name__ == '__main__':

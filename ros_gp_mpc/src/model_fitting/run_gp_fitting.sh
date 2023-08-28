@@ -25,5 +25,5 @@ echo "Dimension indices: $dimension_indices"
 for i in $dimension_indices
 do
     echo "Running with index $i..."
-    python3 "$script_dir"/gp_fitting.py --n_points $n_points --model_name simple_sim_gp --x $i --y $i
+    python3 "$script_dir"/gp_fitting.py --n_points $n_points --model_name simple_sim_gp --x $dimension_indices --y $i
 done

@@ -250,62 +250,63 @@ def visualize_gp_inference(x_data, u_data, y_data, gp_ensemble, vis_features_x, 
 
     # Also create mock u features
     u_mock = np.tile(np.zeros_like(z), (1, u_data.shape[1]))
+    save_file_name = 'gp_prediction' + str(y_dims) + '.png'
 
     if len(vis_features_x) != 3:
         plt.tight_layout()
         plt.grid(True)
-        plt.savefig(os.path.join(save_file_path, save_file_name + '_' + str(y_vis_feats) + '_0.png'))
+        plt.savefig(os.path.join(save_file_path, save_file_name))
         plt.close()
         # plt.show()
         return
 
-    # Generate animated plot showing prediction of the multiple clusters.
-    # Cluster coloring only possible if all the output dimensions have exactly the same clusters.
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    print("Grid sampling...")
-    outs = gp_ensemble.predict(x_mock.T, u_mock.T, return_gp_id=True, progress_bar=True)
-    y_pred = np.atleast_2d(np.atleast_2d(outs["pred"])[y_dims])
-    gp_ids = outs["gp_id"]
-    y_sample = np.sqrt(np.sum(y_pred ** 2, 0))
-    y_sample = np.reshape(y_sample, x_mesh.shape)
+    # # Generate animated plot showing prediction of the multiple clusters.
+    # # Cluster coloring only possible if all the output dimensions have exactly the same clusters.
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
+    # print("Grid sampling...")
+    # outs = gp_ensemble.predict(x_mock.T, u_mock.T, return_gp_id=True, progress_bar=True)
+    # y_pred = np.atleast_2d(np.atleast_2d(outs["pred"])[y_dims])
+    # gp_ids = outs["gp_id"]
+    # y_sample = np.sqrt(np.sum(y_pred ** 2, 0))
+    # y_sample = np.reshape(y_sample, x_mesh.shape)
 
-    gp_ids = np.reshape(gp_ids[next(iter(gp_ids))], x_mesh.shape)
+    # gp_ids = np.reshape(gp_ids[next(iter(gp_ids))], x_mesh.shape)
 
-    def init():
-        # create the new map
-        cmap = cm.get_cmap('jet')
-        cmaplist = [cmap(j) for j in range(cmap.N)]
-        cmap = LinearSegmentedColormap.from_list('Custom cmap', cmaplist, cmap.N)
+    # def init():
+    #     # create the new map
+    #     cmap = cm.get_cmap('jet')
+    #     cmaplist = [cmap(j) for j in range(cmap.N)]
+    #     cmap = LinearSegmentedColormap.from_list('Custom cmap', cmaplist, cmap.N)
 
-        # define the bins and normalize
-        capped_n_clusters = min(np.amax(gp_ids) + 2, 20)
-        bounds = np.linspace(0, np.amax(gp_ids) + 1, capped_n_clusters)
-        norm = BoundaryNorm(bounds, cmap.N)
+    #     # define the bins and normalize
+    #     capped_n_clusters = min(np.amax(gp_ids) + 2, 20)
+    #     bounds = np.linspace(0, np.amax(gp_ids) + 1, capped_n_clusters)
+    #     norm = BoundaryNorm(bounds, cmap.N)
 
-        my_col = cm.get_cmap('jet')(gp_ids / (np.amax(gp_ids) + 1))
+    #     my_col = cm.get_cmap('jet')(gp_ids / (np.amax(gp_ids) + 1))
 
-        ax.plot_surface(x_mesh, y_mesh, y_sample, facecolors=my_col, linewidth=0, rstride=1, cstride=1,
-                        antialiased=False, alpha=0.7, cmap=cmap, norm=norm)
-        ax2 = fig.add_axes([0.90, 0.2, 0.03, 0.6])
-        ColorbarBase(ax2, cmap=cmap, norm=norm, spacing='proportional', ticks=bounds, boundaries=bounds, format='%1i')
-        ax2.set_ylabel('Cluster assignment ID', size=14)
-        ax2.tick_params(labelsize=16)
+    #     ax.plot_surface(x_mesh, y_mesh, y_sample, facecolors=my_col, linewidth=0, rstride=1, cstride=1,
+    #                     antialiased=False, alpha=0.7, cmap=cmap, norm=norm)
+    #     ax2 = fig.add_axes([0.90, 0.2, 0.03, 0.6])
+    #     ColorbarBase(ax2, cmap=cmap, norm=norm, spacing='proportional', ticks=bounds, boundaries=bounds, format='%1i')
+    #     ax2.set_ylabel('Cluster assignment ID', size=14)
+    #     ax2.tick_params(labelsize=16)
 
-        ax.tick_params(labelsize=14)
-        ax.set_xlabel(labels[0], size=16, labelpad=10)
-        ax.set_ylabel(labels[1], size=16, labelpad=10)
-        ax.set_zlabel(r'$\|\tilde{\mathbf{a}}^e\|\: \left[\frac{m}{s^2}\right]$', size=16, labelpad=10)
-        ax.set_title(r'GP correction. Slice $v_z=0 \:\: \left[\frac{m}{s}\right]$', size=18)
-        return fig,
+    #     ax.tick_params(labelsize=14)
+    #     ax.set_xlabel(labels[0], size=16, labelpad=10)
+    #     ax.set_ylabel(labels[1], size=16, labelpad=10)
+    #     ax.set_zlabel(r'$\|\tilde{\mathbf{a}}^e\|\: \left[\frac{m}{s^2}\right]$', size=16, labelpad=10)
+    #     ax.set_title(r'GP correction. Slice $v_z=0 \:\: \left[\frac{m}{s}\right]$', size=18)
+    #     return fig,
 
-    def animate(i):
-        ax.view_init(elev=30., azim=i*3)
-        return fig
+    # def animate(i):
+    #     ax.view_init(elev=30., azim=i*3)
+    #     return fig
 
-    _ = animation.FuncAnimation(fig, animate, init_func=init, frames=360, interval=20, blit=False)
+    # _ = animation.FuncAnimation(fig, animate, init_func=init, frames=360, interval=20, blit=False)
 
-    plt.show()
+    # plt.show()
 
 
 def initialize_drone_plotter(world_rad, quad_rad, n_props, full_traj=None):
