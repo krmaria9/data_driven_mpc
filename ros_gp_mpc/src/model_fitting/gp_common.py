@@ -82,9 +82,11 @@ class GPDataset:
         dt = np.delete(dt, invalid, axis=0)
 
         # Rotate velocities to body frame and recompute errors
-        x_raw = world_to_body_velocity_mapping(x_raw)
-        x_pred = world_to_body_velocity_mapping(x_pred)
-        x_out = world_to_body_velocity_mapping(x_out)
+        # It's not the same as first substracting x_out - x_pred, and then doing the frame trafo (only if q_pred==q_out, which is not the case)
+        # Only if q is the same in both cases (out, pred)
+        # x_raw = world_to_body_velocity_mapping(x_raw)
+        # x_pred = world_to_body_velocity_mapping(x_pred)
+        # x_out = world_to_body_velocity_mapping(x_out)
         y_err = x_out - x_pred
 
         # Normalize error by window time (i.e. predict error dynamics instead of error itself)

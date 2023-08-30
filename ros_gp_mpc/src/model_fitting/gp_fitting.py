@@ -19,6 +19,7 @@ import subprocess
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import pandas as pd
 
 from src.utils.utils import safe_mkdir_recursive, load_pickled_models
 from src.utils.utils import distance_maximizing_points, get_model_dir_and_file
@@ -117,7 +118,7 @@ def gp_train_and_save(x, y, gp_regressors, save_model, save_file, save_path, y_d
         # Fit one regressor for each output dimension
         gp_regressors[y_dim_reg].fit(x[y_dim_reg], y[y_dim_reg])
         if save_model:
-            full_path = os.path.join(save_path, save_file + '_' + str(dim) + '_' + str(cluster_n) + '.pkl')
+            full_path = os.path.join(save_path, save_file + '_' + str(dim) + '.pkl')
             gp_regressors[y_dim_reg].save(full_path)
 
     return gp_regressors
@@ -165,25 +166,37 @@ def main(x_features, u_features, reg_y_dim, quad_sim_options, dataset_name,
 
     # #### Prepare saving directory for GP's #### #
     # Get git commit hash for saving the model
-    git_version = ''
+    # git_version = ''
     # try:
     #     git_version = subprocess.check_output(['git', 'describe', '--always']).strip().decode("utf-8")
     # except subprocess.CalledProcessError as e:
     #     print(e.returncode, e.output)
     # print("The model will be saved using hash: %s" % git_version)
 
-    gp_name_dict = {"git": git_version, "model_name": model_name, "params": quad_sim_options}
-    save_file_path, save_file_name = get_model_dir_and_file(gp_name_dict)
+    # gp_name_dict = {"git": git_version, "model_name": model_name, "params": quad_sim_options}
+    # save_file_path, save_file_name = get_model_dir_and_file(gp_name_dict)
 
     # #### DATASET LOADING #### #
-    if isinstance(dataset_name, str):
-        df_train = read_dataset(dataset_name, True, quad_sim_options)
-        gp_dataset = GPDataset(df_train, x_features, u_features, reg_y_dim,
-                               cap=x_cap, n_bins=hist_bins, thresh=hist_thresh, visualize_data=visualize_data)
-    elif isinstance(dataset_name, GPDataset):
-        gp_dataset = dataset_name
-    else:
-        raise TypeError("dataset_name must be a string or a GPDataset instance.")
+    # if isinstance(dataset_name, str):
+    #     df_train = read_dataset(dataset_name, True, quad_sim_options)
+    #     gp_dataset = GPDataset(df_train, x_features, u_features, reg_y_dim,
+    #                            cap=x_cap, n_bins=hist_bins, thresh=hist_thresh, visualize_data=visualize_data)
+    # elif isinstance(dataset_name, GPDataset):
+    #     gp_dataset = dataset_name
+    # else:
+    #     raise TypeError("dataset_name must be a string or a GPDataset instance.")
+
+    dataset_path = os.environ['FLIGHTMARE_PATH'] + "/misc/data_sihao/"
+    dataset_file = os.path.join(dataset_path,dataset_name + ".csv")
+    
+    save_file_path = os.environ["AGI_PATH"] + "/externals/data_driven_mpc/ros_gp_mpc/data/" + dataset_name
+    save_file_name = 'gp_model'
+    os.makedirs(save_file_path,exist_ok=True)
+
+    df_train = pd.read_csv(dataset_file)
+    df_train = df_train.sample(frac=1).reset_index(drop=True) # shuffle
+    gp_dataset = GPDataset(df_train, x_features=x_features, u_features=[], y_dim=reg_y_dim,
+                        cap=x_cap, n_bins=hist_bins, thresh=hist_thresh, visualize_data=False)
 
     # Make clusters for multi-gp prediction
     gp_dataset.cluster(n_clusters, load_clusters=load_clusters, save_dir=save_file_path, visualize_data=visualize_data)
@@ -304,7 +317,7 @@ def main(x_features, u_features, reg_y_dim, quad_sim_options, dataset_name,
         gp_ensemble = GPEnsemble()
         gp_ensemble.add_model(gp_regressors)
         x_features = x_features
-        gp_visualization_experiment(quad_sim_options, gp_dataset,
+        gp_visualization_experiment(quad_sim_options, dataset_file,
                                     x_cap, hist_bins, hist_thresh,
                                     x_features, u_features, reg_y_dim,
                                     save_file_path, save_file_name,
@@ -365,6 +378,8 @@ if __name__ == '__main__':
     parser.add_argument("--y", type=int, default=7,
                         help="Regression Y variable. Must be an integer between 0 and 12. Velocities xyz correspond to"
                              "indices 7, 8, 9.")
+    
+    parser.add_argument("--ds_name", type=str, required=True)
 
     input_arguments = parser.parse_args()
 
@@ -377,7 +392,7 @@ if __name__ == '__main__':
     n_train_pts = input_arguments.n_points
     gp_name = input_arguments.model_name
 
-    ds_name = Conf.ds_name
+    ds_name = input_arguments.ds_name
     simulation_options = Conf.ds_metadata
 
     histogram_pruning_bins = Conf.histogram_bins

@@ -4,6 +4,7 @@ venv/*
 .idea/
 *.pyc
 ros_gp_mpc/acados_models/*
+ros_gp_mpc/data/*
 c_generated_code/
 *.egg-info/
 dist/

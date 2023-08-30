@@ -19,9 +19,9 @@ from config.configuration_parameters import ModelFitConfig as Conf
 from src.utils.utils import load_pickled_models
 from src.utils.visualization import visualize_gp_inference
 import os
+import pandas as pd
 
-
-def gp_visualization_experiment(quad_sim_options, dataset_name,
+def gp_visualization_experiment(quad_sim_options, dataset_file,
                                 x_cap, hist_bins, hist_thresh,
                                 x_vis_feats, u_vis_feats, y_vis_feats,
                                 save_file_path, save_file_name,
@@ -51,12 +51,16 @@ def gp_visualization_experiment(quad_sim_options, dataset_name,
     labels_ = [labels_u[feat] for feat in u_vis_feats]
     labels = labels + labels_
 
-    if isinstance(dataset_name, str):
-        test_ds = read_dataset(dataset_name, True, quad_sim_options)
-        test_gp_ds = GPDataset(test_ds, x_features=x_vis_feats, u_features=u_vis_feats, y_dim=y_vis_feats,
-                               cap=x_cap, n_bins=hist_bins, thresh=hist_thresh, visualize_data=False)
-    else:
-        test_gp_ds = dataset_name
+    # if isinstance(dataset_name, str):
+    #     test_ds = read_dataset(dataset_name, True, quad_sim_options)
+    #     test_gp_ds = GPDataset(test_ds, x_features=x_vis_feats, u_features=u_vis_feats, y_dim=y_vis_feats,
+    #                            cap=x_cap, n_bins=hist_bins, thresh=hist_thresh, visualize_data=False)
+    # else:
+    #     test_gp_ds = dataset_name
+        
+    test_ds = pd.read_csv(dataset_file)
+    test_gp_ds = GPDataset(test_ds, x_features=x_vis_feats, u_features=u_vis_feats, y_dim=y_vis_feats,
+                           cap=x_cap, n_bins=hist_bins, thresh=hist_thresh, visualize_data=False)
 
     x_test = test_gp_ds.get_x(pruned=True, raw=True)
     u_test = test_gp_ds.get_u(pruned=True, raw=True)
@@ -111,10 +115,10 @@ def gp_visualization_experiment(quad_sim_options, dataset_name,
         if nominal_diff is not None:
             plt.plot(t_vec, nominal_diff[:, i], 'r', label='nominal_err')
             plt.title('Dt: %.2f s. Nom RMSE: %.7f [m/s].  Aug RMSE: %.7f [m/s]' % (
-                float(np.mean(dt_test)), nominal_rmse[i], augmented_rmse[i]))
+                float(np.mean(dt_test)), nominal_rmse, augmented_rmse))
         else:
             plt.title('Dt: %.2f s. Aug RMSE: %.7f [m/s]' % (
-                float(np.mean(dt_test)), float(augmented_rmse[i])))
+                float(np.mean(dt_test)), float(augmented_rmse)))
 
         plt.plot(t_vec, mean_estimate, 'g', label='y_pred')
         plt.ylabel(labels[i])
@@ -126,7 +130,9 @@ def gp_visualization_experiment(quad_sim_options, dataset_name,
     plt.tight_layout()
     plt.grid(True)
     filename = save_file_name + '_' + str(y_vis_feats) + '.png'
-    plt.savefig(os.path.join(save_file_path, filename), dpi=400)
+    save_path = os.path.join(save_file_path, filename)
+    print(save_path)
+    plt.savefig(save_path, dpi=400)
     plt.close()
 
 if __name__ == '__main__':
