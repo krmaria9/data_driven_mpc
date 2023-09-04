@@ -84,9 +84,9 @@ class GPDataset:
         # Rotate velocities to body frame and recompute errors
         # It's not the same as first substracting x_out - x_pred, and then doing the frame trafo (only if q_pred==q_out, which is not the case)
         # Only if q is the same in both cases (out, pred)
-        # x_raw = world_to_body_velocity_mapping(x_raw)
-        # x_pred = world_to_body_velocity_mapping(x_pred)
-        # x_out = world_to_body_velocity_mapping(x_out)
+        x_raw = world_to_body_velocity_mapping(x_raw, x_raw)
+        x_pred = world_to_body_velocity_mapping(x_pred, x_raw)
+        x_out = world_to_body_velocity_mapping(x_out, x_raw)
         y_err = x_out - x_pred
 
         # Normalize error by window time (i.e. predict error dynamics instead of error itself)
@@ -328,7 +328,7 @@ def read_dataset(name, train_split, sim_options):
     return ds
 
 
-def world_to_body_velocity_mapping(state_sequence):
+def world_to_body_velocity_mapping(state_sequence, state_sequence_2):
     """
 
     :param state_sequence: N x 13 state array, where N is the number of states in the sequence.
@@ -336,7 +336,8 @@ def world_to_body_velocity_mapping(state_sequence):
     rotated from world to body frame. The rotation is made using the quaternion in positions 3, 4, 5, 6.
     """
 
-    p, q, v_w, w = separate_variables(state_sequence)
+    p, _, v_w, w = separate_variables(state_sequence)
+    p, q, _, w = separate_variables(state_sequence_2)
     v_b = []
     for i in range(len(q)):
         v_b.append(v_dot_q(v_w[i], quaternion_inverse(q[i])))
