@@ -336,11 +336,11 @@ def world_to_body_velocity_mapping(state_sequence, state_sequence_2):
     rotated from world to body frame. The rotation is made using the quaternion in positions 3, 4, 5, 6.
     """
 
-    p, _, v_w, w = separate_variables(state_sequence)
-    p, q, _, w = separate_variables(state_sequence_2)
+    p, q, v_w, w = separate_variables(state_sequence)
+    _, q_2, _, _ = separate_variables(state_sequence_2)
     v_b = []
     for i in range(len(q)):
-        v_b.append(v_dot_q(v_w[i], quaternion_inverse(q[i])))
+        v_b.append(v_dot_q(v_w[i], quaternion_inverse(q_2[i])))
     v_b = np.stack(v_b)
     return np.concatenate((p, q, v_b, w), 1)
 
