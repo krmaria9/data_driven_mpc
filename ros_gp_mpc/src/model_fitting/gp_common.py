@@ -28,7 +28,7 @@ from src.utils.visualization import visualize_data_distribution
 
 class GPDataset:
     def __init__(self, raw_ds=None,
-                 x_features=None, u_features=None, y_dim=None,
+                 x_features=None, u_features=None, z_features=None, y_dim=None,
                  cap=None, n_bins=None, thresh=None,
                  visualize_data=False):
 
@@ -39,12 +39,14 @@ class GPDataset:
         self.x_raw = None
         self.x_out_raw = None
         self.u_raw = None
+        self.z_raw = None
         self.y_raw = None
         self.x_pred_raw = None
         self.dt_raw = None
 
         self.x_features = x_features
         self.u_features = u_features
+        self.z_features = z_features
         self.y_dim = y_dim
 
         # Data pruning parameters
@@ -70,6 +72,7 @@ class GPDataset:
         x_out = undo_jsonify(ds['state_out'].to_numpy())
         x_pred = undo_jsonify(ds['state_pred'].to_numpy())
         u_raw = undo_jsonify(ds['input_in'].to_numpy())
+        z_raw = undo_jsonify(ds['aux_in'].to_numpy())
 
         dt = ds["dt"].to_numpy()
         invalid = np.where(dt == 0)
@@ -79,6 +82,7 @@ class GPDataset:
         x_out = np.delete(x_out, invalid, axis=0)
         x_pred = np.delete(x_pred, invalid, axis=0)
         u_raw = np.delete(u_raw, invalid, axis=0)
+        z_raw = np.delete(z_raw, invalid, axis=0)
         dt = np.delete(dt, invalid, axis=0)
 
         # Rotate velocities to body frame and recompute errors
@@ -96,6 +100,7 @@ class GPDataset:
         self.x_raw = x_raw
         self.x_out_raw = x_out
         self.u_raw = u_raw
+        self.z_raw = z_raw
         self.y_raw = y_err
         self.x_pred_raw = x_pred
         self.dt_raw = dt
@@ -121,12 +126,18 @@ class GPDataset:
         if raw:
             return self.x_raw[tuple(self.pruned_idx)] if pruned else self.x_raw
 
-        if self.x_features is not None and self.u_features is not None:
+        data_list = []
+        if self.x_features:
             x_f = self.x_features
+            data_list.append(self.x_raw[:, x_f])
+        if self.u_features:
             u_f = self.u_features
-            data = np.concatenate((self.x_raw[:, x_f], self.u_raw[:, u_f]), axis=1) if u_f else self.x_raw[:, x_f]
-        else:
-            data = np.concatenate((self.x_raw, self.u_raw), axis=1)
+            data_list.append(self.u_raw[:, u_f])
+        if self.z_features:
+            z_f = self.z_features
+            data_list.append(self.z_raw[:, z_f])
+        data = np.concatenate(data_list, axis=1)
+
         data = data[:, np.newaxis] if len(data.shape) == 1 else data
 
         if pruned or cluster is not None:
@@ -176,6 +187,27 @@ class GPDataset:
     @property
     def u(self):
         return self.get_u()
+
+    def get_z(self, cluster=None, pruned=True, raw=False):
+
+        if cluster is not None:
+            assert pruned
+
+        if raw:
+            return self.z_raw[tuple(self.pruned_idx)] if pruned else self.z_raw
+
+        data = self.z_raw[:, self.z_features] if self.z_features is not None else self.z_raw
+        data = data[:, np.newaxis] if len(data.shape) == 1 else data
+
+        if pruned or cluster is not None:
+            data = data[tuple(self.pruned_idx)]
+            data = data[self.cluster_agency[cluster]] if cluster is not None else data
+
+        return data
+
+    @property
+    def z(self):
+        return self.get_z()
 
     def get_y(self, cluster=None, pruned=True, raw=False):
 
