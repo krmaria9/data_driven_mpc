@@ -320,6 +320,11 @@ def v_dot_q(v, q):
     return cs.mtimes(rot_mat, v)
 
 
+def v_dot_q_vectorized(v, q):
+    rot_mats = q_to_rot_mat_vectorized(q)
+    return np.einsum('ijk,ik->ij', rot_mats, v)
+
+
 def q_to_rot_mat(q):
     qw, qx, qy, qz = q[0], q[1], q[2], q[3]
 
@@ -334,6 +339,26 @@ def q_to_rot_mat(q):
             cs.horzcat(1 - 2 * (qy ** 2 + qz ** 2), 2 * (qx * qy - qw * qz), 2 * (qx * qz + qw * qy)),
             cs.horzcat(2 * (qx * qy + qw * qz), 1 - 2 * (qx ** 2 + qz ** 2), 2 * (qy * qz - qw * qx)),
             cs.horzcat(2 * (qx * qz - qw * qy), 2 * (qy * qz + qw * qx), 1 - 2 * (qx ** 2 + qy ** 2)))
+
+    return rot_mat
+
+
+def q_to_rot_mat_vectorized(q):
+    qw, qx, qy, qz = q[:, 0], q[:, 1], q[:, 2], q[:, 3]
+    
+    rot_mat = np.zeros((q.shape[0], 3, 3))
+
+    rot_mat[:, 0, 0] = 1 - 2 * (qy ** 2 + qz ** 2)
+    rot_mat[:, 0, 1] = 2 * (qx * qy - qw * qz)
+    rot_mat[:, 0, 2] = 2 * (qx * qz + qw * qy)
+
+    rot_mat[:, 1, 0] = 2 * (qx * qy + qw * qz)
+    rot_mat[:, 1, 1] = 1 - 2 * (qx ** 2 + qz ** 2)
+    rot_mat[:, 1, 2] = 2 * (qy * qz - qw * qx)
+
+    rot_mat[:, 2, 0] = 2 * (qx * qz - qw * qy)
+    rot_mat[:, 2, 1] = 2 * (qy * qz + qw * qx)
+    rot_mat[:, 2, 2] = 1 - 2 * (qx ** 2 + qy ** 2)
 
     return rot_mat
 
@@ -436,6 +461,12 @@ def quaternion_inverse(q):
         return np.array([w, -x, -y, -z])
     else:
         return cs.vertcat(w, -x, -y, -z)
+
+
+def quaternion_inverse_vectorized(q):
+    q_inv = q.copy()
+    q_inv[:, 1:] *= -1
+    return q_inv
 
 
 def rotation_matrix_to_euler(r_mat):

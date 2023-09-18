@@ -22,7 +22,7 @@ from sklearn.mixture import GaussianMixture
 
 from src.model_fitting.gp import GPEnsemble, CustomGPRegression as npGPRegression
 from src.utils.utils import undo_jsonify, prune_dataset, safe_mknode_recursive, get_data_dir_and_file, \
-    separate_variables, v_dot_q, quaternion_inverse
+    separate_variables, v_dot_q_vectorized, quaternion_inverse_vectorized
 from src.utils.visualization import visualize_data_distribution
 
 
@@ -361,31 +361,11 @@ def read_dataset(name, train_split, sim_options):
 
 
 def world_to_body_velocity_mapping(state_sequence, state_sequence_2):
-    """
-
-    :param state_sequence: N x 13 state array, where N is the number of states in the sequence.
-    :return: An N x 13 sequence of states, but where the velocities (assumed to be in positions 7, 8, 9) have been
-    rotated from world to body frame. The rotation is made using the quaternion in positions 3, 4, 5, 6.
-    """
-
     p, q, v_w, w = separate_variables(state_sequence)
     _, q_2, _, _ = separate_variables(state_sequence_2)
-    v_b = []
-    for i in range(len(q)):
-        v_b.append(v_dot_q(v_w[i], quaternion_inverse(q_2[i])))
-    v_b = np.stack(v_b)
+
+    q_2_inv = quaternion_inverse_vectorized(q_2)
+
+    v_b = v_dot_q_vectorized(v_w, q_2_inv)
+    
     return np.concatenate((p, q, v_b, w), 1)
-
-
-def body_to_world_velocity_mapping(state_sequence):
-    """
-    :param state_sequence: N x 13 state array, where N is the number of states in the sequence.
-    :return: An N x 13 sequence of states, but where the velocities (assumed to be in positions 7, 8, 9) have been
-    rotated from body to world frame. The rotation is made using the quaternion in positions 3, 4, 5, 6.
-    """
-    p, q, v_b, w = separate_variables(state_sequence)
-    v_w = []
-    for i in range(len(q)):
-        v_w.append(v_dot_q(v_b[i], q[i]))  # use the original quaternion without inversing it
-    v_w = np.stack(v_w)
-    return np.concatenate((p, q, v_w, w), 1)
