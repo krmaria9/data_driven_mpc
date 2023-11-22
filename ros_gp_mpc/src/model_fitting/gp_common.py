@@ -23,12 +23,12 @@ from sklearn.mixture import GaussianMixture
 from src.model_fitting.gp import GPEnsemble, CustomGPRegression as npGPRegression
 from src.utils.utils import undo_jsonify, prune_dataset, safe_mknode_recursive, get_data_dir_and_file, \
     separate_variables, v_dot_q_vectorized, quaternion_inverse_vectorized
-from src.utils.visualization import visualize_data_distribution
+# from src.utils.visualization import visualize_data_distribution
 
 
 class GPDataset:
     def __init__(self, raw_ds=None,
-                 x_features=None, u_features=None, z_features=None, y_dim=None,
+                 x_features=None, u_features=None, y_dim=None,
                  cap=None, n_bins=None, thresh=None,
                  visualize_data=False):
 
@@ -39,14 +39,12 @@ class GPDataset:
         self.x_raw = None
         self.x_out_raw = None
         self.u_raw = None
-        self.z_raw = None
         self.y_raw = None
         self.x_pred_raw = None
         self.dt_raw = None
 
         self.x_features = x_features
         self.u_features = u_features
-        self.z_features = z_features
         self.y_dim = y_dim
 
         # Data pruning parameters
@@ -67,12 +65,12 @@ class GPDataset:
             self.load_data(raw_ds)
             # self.prune()
 
+    # TODO (krmaria): this is the time consuming operation, try to switch to casadi?? Or could to the world to body mapping in the predict part?
     def load_data(self, ds):
         x_raw = undo_jsonify(ds['state_in'].to_numpy())
         x_out = undo_jsonify(ds['state_out'].to_numpy())
-        x_pred = undo_jsonify(ds['state_pred'].to_numpy())
+        x_pred = undo_jsonify(ds['state_nom'].to_numpy())
         u_raw = undo_jsonify(ds['input_in'].to_numpy())
-        z_raw = undo_jsonify(ds['aux_in'].to_numpy())
 
         dt = ds["dt"].to_numpy()
         invalid = np.where(dt == 0)
@@ -82,7 +80,6 @@ class GPDataset:
         x_out = np.delete(x_out, invalid, axis=0)
         x_pred = np.delete(x_pred, invalid, axis=0)
         u_raw = np.delete(u_raw, invalid, axis=0)
-        z_raw = np.delete(z_raw, invalid, axis=0)
         dt = np.delete(dt, invalid, axis=0)
 
         # Rotate velocities to body frame and recompute errors
@@ -91,6 +88,11 @@ class GPDataset:
         x_raw = world_to_body_velocity_mapping(x_raw, x_raw)
         x_pred = world_to_body_velocity_mapping(x_pred, x_raw)
         x_out = world_to_body_velocity_mapping(x_out, x_raw)
+        
+        # Augment with zeros in case of column mismatch (i.e if N/A, let's use 0)
+        additional_cols = np.zeros((x_pred.shape[0], x_out.shape[1] - x_pred.shape[1]))
+        x_pred = np.hstack((x_pred, additional_cols))
+
         y_err = x_out - x_pred
 
         # Normalize error by window time (i.e. predict error dynamics instead of error itself)
@@ -100,7 +102,6 @@ class GPDataset:
         self.x_raw = x_raw
         self.x_out_raw = x_out
         self.u_raw = u_raw
-        self.z_raw = z_raw
         self.y_raw = y_err
         self.x_pred_raw = x_pred
         self.dt_raw = dt
@@ -133,9 +134,6 @@ class GPDataset:
         if self.u_features:
             u_f = self.u_features
             data_list.append(self.u_raw[:, u_f])
-        if self.z_features:
-            z_f = self.z_features
-            data_list.append(self.z_raw[:, z_f])
         data = np.concatenate(data_list, axis=1)
 
         data = data[:, np.newaxis] if len(data.shape) == 1 else data
@@ -188,28 +186,9 @@ class GPDataset:
     def u(self):
         return self.get_u()
 
-    def get_z(self, cluster=None, pruned=True, raw=False):
-
-        if cluster is not None:
-            assert pruned
-
-        if raw:
-            return self.z_raw[tuple(self.pruned_idx)] if pruned else self.z_raw
-
-        data = self.z_raw[:, self.z_features] if self.z_features is not None else self.z_raw
-        data = data[:, np.newaxis] if len(data.shape) == 1 else data
-
-        if pruned or cluster is not None:
-            data = data[tuple(self.pruned_idx)]
-            data = data[self.cluster_agency[cluster]] if cluster is not None else data
-
-        return data
-
-    @property
-    def z(self):
-        return self.get_z()
-
-    def get_y(self, cluster=None, pruned=True, raw=False):
+    def get_y(self, y_dim=None, cluster=None, pruned=True, raw=False):
+        if y_dim is not None:
+            self.y_dim = y_dim
 
         if cluster is not None:
             assert pruned
@@ -295,11 +274,11 @@ class GPDataset:
             idx = np.append(idx, np.where((top_2 == cluster) * (clusters_[index_aux, top_2] > 0.2))[0])
             cluster_agency[cluster] = idx
 
-        # Only works in len(x_features) >= 3
-        if visualize_data:
-            x_aux = self.get_x(pruned=False)
-            y_aux = self.get_y(pruned=False)
-            visualize_data_distribution(x_aux, y_aux, cluster_agency, x_pruned, y_pruned)
+        # # Only works in len(x_features) >= 3
+        # if visualize_data:
+        #     x_aux = self.get_x(pruned=False)
+        #     y_aux = self.get_y(pruned=False)
+        #     visualize_data_distribution(x_aux, y_aux, cluster_agency, x_pruned, y_pruned)
 
         self.cluster_agency = cluster_agency
         self.centroids = centroids
